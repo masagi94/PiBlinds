@@ -1,0 +1,5 @@
+# open blinds at 7am every day
+0 7 * * * /home/pi/Desktop/openBlinds open
+
+# close blinds at 7pm every day
+0 19 * * * /home/pi/Desktop/openBlinds close
