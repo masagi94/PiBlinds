@@ -8,20 +8,20 @@
  
  
 // The wiringPi pins the stepper motor  is connected to
-#define IN1 0
-#define IN2 1
-#define IN3 2
-#define IN4 3
+#define IN1 23
+#define IN2 24
+#define IN3 25
+#define IN4 28
 
 #define IN5 8
 #define IN6 9
 #define IN7 7
 #define IN8 15
 
-#define IN9 23
-#define IN10 24
-#define IN11 25
-#define IN12 20
+#define IN9 0
+#define IN10 1
+#define IN11 2
+#define IN12 3
  
 // BlindStatus is used to track the current state of the blinds. 0 is closed, 1 is open.
 int blindStatus = 0;
@@ -52,7 +52,7 @@ int main(int argc, char *argv[]){
     }
     
 
-    //checkFile();
+    
 
 
     int result1;
@@ -88,23 +88,27 @@ int main(int argc, char *argv[]){
         motorNum = 2;
     }
     
+
+    checkFile();
+
     int i = 0;
 
 
-    while(i < 2250){
+    while(i < 2100){
         
 
-        reverseFullStepMode();
-       
+        //reverseFullStepMode();
+        //fullStepMode();
 
-        // if(blindStatus == 0){
-        //     //printf("Blinds closed. Opening...\n");
-        //     reverseFullStepMode();
-        // }
-        // else if(blindStatus == 1){
-        //     //printf("Blinds open. Closing...\n");
-        //     fullStepMode();
-        // }
+        if(blindStatus == 0){
+            //printf("Blinds closed. Opening...\n");
+            fullStepMode();
+        }
+        else if(blindStatus == 1){
+            //printf("Blinds open. Closing...\n");
+            
+            reverseFullStepMode();
+        }
 
         i++;
     }
@@ -126,28 +130,88 @@ int main(int argc, char *argv[]){
 void checkFile(){
     FILE *fp;
 
-    char buff[50];
+    char stat0[6];
+    char stat1[6];
+    char stat2[6];
+    int result0;
+    int result1;
+    int result2;
+
+    char buff[25];
+
     fp = fopen("/home/pi/Desktop/blindStatus.txt", "r");
     fscanf(fp, "%s", buff);
-    printf("%s\n", buff);
+    strcpy(stat0, buff);
+    fscanf(fp, "%s", buff);
+    strcpy(stat1, buff);
+    fscanf(fp, "%s", buff);
+    strcpy(stat2, buff);
+
+    result0 = strcmp("closed", stat0);
+    result1 = strcmp("closed", stat1);
+    result2 = strcmp("closed", stat2);
+    
+
+    // printf("%s\n", stat0);
+    // printf("%s\n", stat1);
+    // printf("%s\n", stat2);
+
     fclose(fp);
 
+    // This will clear the file, so we may write the new status of the blinds to it
     fp = fopen("/home/pi/Desktop/blindStatus.txt", "w");
-    int result;
-    result = strcmp("open", buff);
+    
+    
 
-    if(result == 0){
-        blindStatus = 1;
-        fputs("close\n",fp);
+    // If the blind was closed, it's now open.
+    if(motorNum == 0){
+        if(result0 == 0){
+            blindStatus = 1;
+            printf("writing OPEN to file\n");
+            fputs("open\n",fp);
+        }
+        else{
+            blindStatus = 0;
+            fputs("closed\n",fp);
+            printf("writing CLOSED to file\n");
+        }
+
+        fputs(stat1,fp);
+        fputs("\n",fp);
+        fputs(stat2,fp);
+    }
+    else if(motorNum == 1){
+        fputs(stat0,fp);
+        fputs("\n",fp);
+        
+        if(result1 == 0){
+            blindStatus = 1;
+            fputs("open\n",fp);
+        }
+        else{
+            blindStatus = 0;
+            fputs("closed\n",fp);
+        }
+
+        fputs(stat2,fp);
     }
     else{
-        blindStatus = 0;
-        fputs("open\n",fp);
+        fputs(stat0,fp);
+        fputs("\n",fp);
+        fputs(stat1,fp);
+        fputs("\n",fp);
+
+        if(result2 == 0){
+            blindStatus = 1;
+            fputs("open\n",fp);
+        }
+        else{
+            blindStatus = 0;
+            fputs("closed\n",fp);
+        }
     }
+
     fclose(fp);
-
-    printf("%i\n", blindStatus);
-
 }
 
 
@@ -192,7 +256,7 @@ void configure(){
     pullUpDnControl(IN12, PUD_DOWN);
 
 }
-  
+
 void fullStepMode(){
  
     int step = 0;
@@ -238,7 +302,6 @@ void reverseFullStepMode(){
 // This helper method sets the step on the stepper motor
 void setStep(int i1, int i2, int i3, int i4){
     if(motorNum == 0){
-
         digitalWrite(IN1, i1);
         digitalWrite(IN2, i2);
         digitalWrite(IN3, i3);
