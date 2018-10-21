@@ -25,7 +25,18 @@
  
 // BlindStatus is used to track the current state of the blinds. 0 is closed, 1 is open.
 int blindStatus = 0;
-int motorNum;
+int motorNum = 0;
+
+int blind0State;
+int blind1State;
+int blind2State;
+
+char stat0[6];
+char stat1[6];
+char stat2[6];
+
+//FILE *fp1;
+
 
 // Helper functions
 void configure();
@@ -33,13 +44,14 @@ void fullStepMode();
 void reverseFullStepMode();
 void setStep();
 void checkFile();
+void updateFile();
 
 
  
 
 // The main execution of the code
 int main(int argc, char *argv[]){
-//int main(){
+
     wiringPiSetup();
  
     // Sets up the signals and buttons for use
@@ -51,9 +63,6 @@ int main(int argc, char *argv[]){
         return -1;
     }
     
-
-    
-
 
     int result1;
     int result2;
@@ -69,14 +78,9 @@ int main(int argc, char *argv[]){
     char check3[10];
     strcpy(check3, "2");
 
-    
-    
-    
-    // if(argc != 0){
     result1 = strcmp(check1, argv[1]);
     result2 = strcmp(check2, argv[1]);
     result3 = strcmp(check3, argv[1]);
-    // }
 
     if(result1 == 0){
         motorNum = 0;
@@ -93,20 +97,14 @@ int main(int argc, char *argv[]){
 
     int i = 0;
 
-
+    printf("Toggling blind\n");
+    
     while(i < 2100){
         
-
-        //reverseFullStepMode();
-        //fullStepMode();
-
         if(blindStatus == 0){
-            //printf("Blinds closed. Opening...\n");
             fullStepMode();
         }
-        else if(blindStatus == 1){
-            //printf("Blinds open. Closing...\n");
-            
+        else if(blindStatus == 1){      
             reverseFullStepMode();
         }
 
@@ -116,6 +114,7 @@ int main(int argc, char *argv[]){
     setStep(0,0,0,0);
 
 
+    updateFile();
     
     return 0;
 }
@@ -128,14 +127,17 @@ int main(int argc, char *argv[]){
 */
 
 void checkFile(){
-    FILE *fp;
-
-    char stat0[6];
-    char stat1[6];
-    char stat2[6];
+    FILE *fp, *fp1;
+    
     int result0;
     int result1;
     int result2;
+
+
+    int run0;
+    int run1;
+    int run2;
+
 
     char buff[25];
 
@@ -147,33 +149,48 @@ void checkFile(){
     fscanf(fp, "%s", buff);
     strcpy(stat2, buff);
 
-    result0 = strcmp("closed", stat0);
-    result1 = strcmp("closed", stat1);
-    result2 = strcmp("closed", stat2);
-    
 
-    // printf("%s\n", stat0);
-    // printf("%s\n", stat1);
-    // printf("%s\n", stat2);
+    blind0State = strcmp("closed", stat0);
+    blind1State = strcmp("closed", stat1);
+    blind2State = strcmp("closed", stat2);
+
+    run0 = strcmp("running", stat0);
+    run1 = strcmp("running", stat1);
+    run2 = strcmp("running", stat2);
 
     fclose(fp);
+
+    if (motorNum == 0 && access("b0running.txt", F_OK) != -1){
+        printf("MOTOR 0 ALREADY RUNNING... EXITING...\n");
+        exit(0);
+    }
+    else if (motorNum == 1 && access("b1running.txt", F_OK) != -1){
+        printf("MOTOR 1 ALREADY RUNNING... EXITING...\n");
+        exit(0);
+    }
+    else if (motorNum == 2 && access("b2running.txt", F_OK) != -1){
+        printf("MOTOR 2 ALREADY RUNNING... EXITING...\n");
+        exit(0);
+    }
+
+
 
     // This will clear the file, so we may write the new status of the blinds to it
     fp = fopen("/home/pi/Desktop/blindStatus.txt", "w");
     
-    
+    printf("%i\n", motorNum);
 
-    // If the blind was closed, it's now open.
+    // If motor 0 is activated
     if(motorNum == 0){
-        if(result0 == 0){
+        fp1 = fopen("b0running.txt", "ab+");
+
+        if(blind0State == 0){
             blindStatus = 1;
-            printf("writing OPEN to file\n");
             fputs("open\n",fp);
         }
         else{
             blindStatus = 0;
             fputs("closed\n",fp);
-            printf("writing CLOSED to file\n");
         }
 
         fputs(stat1,fp);
@@ -181,10 +198,13 @@ void checkFile(){
         fputs(stat2,fp);
     }
     else if(motorNum == 1){
+
+        fp1 = fopen("b1running.txt", "ab+");
+
         fputs(stat0,fp);
         fputs("\n",fp);
         
-        if(result1 == 0){
+        if(blind1State == 0){
             blindStatus = 1;
             fputs("open\n",fp);
         }
@@ -196,12 +216,15 @@ void checkFile(){
         fputs(stat2,fp);
     }
     else{
+
+        fp1 = fopen("b2running.txt", "ab+");
+
         fputs(stat0,fp);
         fputs("\n",fp);
         fputs(stat1,fp);
         fputs("\n",fp);
 
-        if(result2 == 0){
+        if(blind2State == 0){
             blindStatus = 1;
             fputs("open\n",fp);
         }
@@ -211,13 +234,25 @@ void checkFile(){
         }
     }
 
+    fclose(fp1);
+
     fclose(fp);
+
+}
+
+void updateFile(){
+    if (motorNum == 0){
+        remove("b0running.txt");
+    }
+    else if (motorNum == 1){
+        remove("b1running.txt");
+    }
+    else if (motorNum == 2){
+        remove("b2running.txt");
+    }
 }
 
 
-
-
- 
  
 // Configures the signals and buttons for use. The buttons are connected
 // to pull-up resistors to avoid floating values, since they all connect to ground.
@@ -323,3 +358,4 @@ void setStep(int i1, int i2, int i3, int i4){
 
     usleep(3000);
 }
+
