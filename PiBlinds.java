@@ -1,5 +1,8 @@
 package com.example.masag.piblinds;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ObjectAnimator;
 import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.Looper;
@@ -8,11 +11,17 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
+import android.widget.ToggleButton;
 
 import com.jcraft.jsch.Channel;
 import com.jcraft.jsch.ChannelExec;
+import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.Session;
+
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -21,19 +30,29 @@ public class MainActivity extends AppCompatActivity {
     private static Handler nHandler = new Handler(Looper.getMainLooper());
 
     String user = "pi";
-    String host = "xxx.xxx.x.xx";
-    String password = "xxxxxxxxx";
+    String host = "192.168.1.32";
+    String password = "Mauricio1";
+
+    // For AP pi
+//    String host = "192.168.0.1";
+//    String password = "colombiano";
+
+    String programPath;
 
     static boolean canPressBtn1 = true;
     static boolean canPressBtn2 = true;
     static boolean canPressBtn3 = true;
+    static boolean tbtn1s = false;
+    static boolean tbtn2s = false;
+    static boolean tbtn3s = false;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        Button btn1 = findViewById(R.id.button1);
+        Button btn1 = findViewById(R.id.button);
         Button btn2 = findViewById(R.id.button2);
         Button btn3 = findViewById(R.id.button3);
 
@@ -42,9 +61,9 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
 
-                if(canPressBtn1){
-                    canPressBtn1 = false;
-                    buttonPushTimer1();
+                programPath = "/home/pi/Desktop/blindControl 0";
+
+
                     System.out.println("****************************ACTIVATING BLINDS****************************");
                     Toast.makeText(MainActivity.this, "Blind 1 Activated", Toast.LENGTH_SHORT).show();
                     new AsyncTask<Integer, Void, Void>(){
@@ -56,10 +75,7 @@ public class MainActivity extends AppCompatActivity {
                             return null;
                         }
                     }.execute(1);
-                }
-                else{
-                    System.out.println("**************WAITING ON TIMER 1****************************");
-                }
+
             }
         });
 
@@ -67,8 +83,22 @@ public class MainActivity extends AppCompatActivity {
         btn2.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Toast.makeText(MainActivity.this, "Blind 2 Activated", Toast.LENGTH_SHORT).show();
-                System.out.println("BUTTON 2 PRESSED");
+
+                programPath = "/home/pi/Desktop/blindControl 1";
+
+                    Toast.makeText(MainActivity.this, "Blind 2 Activated", Toast.LENGTH_SHORT).show();
+                    System.out.println("BUTTON 2 PRESSED");
+
+                    new AsyncTask<Integer, Void, Void>() {
+                        @Override
+                        protected Void doInBackground(Integer... params) {
+                            System.out.println("BUTTON 2 PRESSED");
+
+                            connectToPi();
+                            return null;
+                        }
+                    }.execute(1);
+
             }
         });
 
@@ -76,12 +106,117 @@ public class MainActivity extends AppCompatActivity {
         btn3.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Toast.makeText(MainActivity.this, "Blind 3 Activated", Toast.LENGTH_SHORT).show();
-                System.out.println("BUTTON 3 PRESSED");
+                programPath = "/home/pi/Desktop/blindControl 2";
+
+                    Toast.makeText(MainActivity.this, "Blind 3 Activated", Toast.LENGTH_SHORT).show();
+                    System.out.println("BUTTON 3 PRESSED");
+
+                    new AsyncTask<Integer, Void, Void>() {
+                        @Override
+                        protected Void doInBackground(Integer... params) {
+                            System.out.println("BUTTON 2 PRESSED");
+
+                            connectToPi();
+                            return null;
+                        }
+                    }.execute(1);
             }
         });
+
+        // Button 4
+//        btn4.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View view) {
+////                programPath = "/home/pi/Desktop/blindControl 2";
+////
+////                //if (canPressBtn3) {
+////                    //canPressBtn3 = false;
+////                    //buttonPushTimer3();
+////                    Toast.makeText(MainActivity.this, "PI RESETTING", Toast.LENGTH_SHORT).show();
+////                    //System.out.println("PI RESETTING");
+////
+////                    new AsyncTask<Integer, Void, Void>() {
+////                        @Override
+////                        protected Void doInBackground(Integer... params) {
+////                            System.out.println("RESET PRESSED");
+////
+////                            connectToPi();
+////                            return null;
+////                        }
+////                    }.execute(1);
+////                new AsyncTask<Integer, Void, Void>() {
+////                    @Override
+////                    protected Void doInBackground(Integer... params) {
+////                        System.out.println("SFTP CONNECTION INITIATED****************************************");
+////
+////                        getBlindStatus();
+////                        return null;
+////                    }
+////                }.execute(1);
+//
+//            }
+//        });
+
+
     }
 
+
+    public void getBlindStatus() {
+        try {
+            JSch jsch = new JSch();
+            Session session = jsch.getSession(user, host);
+            session.setPassword(password);
+            session.setConfig("StrictHostKeyChecking", "no");
+            session.connect();
+
+            ChannelSftp sftp = (ChannelSftp) session.openChannel("sftp");
+
+            sftp.connect();
+
+            InputStream stream = sftp.get("/home/pi/Desktop/blindStatus.txt");
+
+            try {
+                 InputStreamReader isr = new InputStreamReader(stream);
+                System.out.println("HERE******************************************************************************");
+                 BufferedReader br = new BufferedReader(isr);
+                System.out.println("HERE******************************************************************************");
+                // read from br
+
+                if(br.readLine().equalsIgnoreCase("open"))
+                    tbtn1s = true;
+                else
+                    tbtn1s = false;
+
+                if(br.readLine().equalsIgnoreCase("open"))
+                    tbtn2s = true;
+                else
+                    tbtn2s = false;
+
+                if(br.readLine().equalsIgnoreCase("open"))
+                    tbtn3s = true;
+                else
+                    tbtn3s = false;
+
+//                System.out.println(br.readLine());
+//                System.out.println(br.readLine());
+//                System.out.println(br.readLine());
+
+                stream.close();
+            }
+            catch(Exception e){
+                e.printStackTrace();
+            }
+            finally{
+
+                sftp.disconnect();
+                session.disconnect();
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
 
     /**
      * This method handles making the connection to the pi via SSH. Both the phone and the pi
@@ -96,7 +231,10 @@ public class MainActivity extends AppCompatActivity {
             session.setConfig("StrictHostKeyChecking", "no");
             session.connect();
             Channel channel = session.openChannel("exec");
-            ((ChannelExec) channel).setCommand("/home/pi/Desktop/openBlinds");
+//            ((ChannelExec) channel).setCommand("/home/pi/Desktop/openBlinds");
+
+            // For AP pi
+            ((ChannelExec) channel).setCommand(programPath);
             channel.connect();
             try{
                 Thread.sleep(1000);
@@ -124,6 +262,7 @@ public class MainActivity extends AppCompatActivity {
                 nHandler.post(new Runnable() {
                     @Override
                     public void run() {
+
                         canPressBtn1 = true;
                         System.out.println("**************TIMER 1 DONE");
                     }
@@ -165,6 +304,5 @@ public class MainActivity extends AppCompatActivity {
             }
         }).start();
     }
-
 
 }
